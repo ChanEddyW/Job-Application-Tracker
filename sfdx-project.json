@@ -5,7 +5,7 @@
       "default": true
     }
   ],
-  "name": "developer-kickstart-capstone-job-application-tracker",
+  "name": "Job-Application-Tracker",
   "namespace": "",
   "sfdcLoginUrl": "https://login.salesforce.com",
   "sourceApiVersion": "60.0"

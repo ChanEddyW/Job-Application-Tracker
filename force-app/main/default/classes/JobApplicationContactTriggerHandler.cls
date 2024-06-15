@@ -14,7 +14,8 @@ public with sharing class JobApplicationContactTriggerHandler {
                 Primary_Contact__c 
             FROM Job_Application__c 
             WHERE Id IN :contactIdsByJobApplicationId.keySet() 
-                AND Primary_Contact__c = null
+                AND Primary_Contact__c = null 
+            WITH USER_MODE
         ];
 
         if (!jobApplicationsToUpdate.isEmpty()) {
@@ -24,7 +25,9 @@ public with sharing class JobApplicationContactTriggerHandler {
                 }
             }
 
-            update jobApplicationsToUpdate;
+            if (Schema.sObjectType.Job_Application__c.isUpdateable()) {
+                update as user jobApplicationsToUpdate;
+            }
         }
     }
 }

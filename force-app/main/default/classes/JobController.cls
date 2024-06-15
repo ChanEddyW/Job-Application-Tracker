@@ -14,12 +14,22 @@ public with sharing class JobController {
                 Source__c, 
                 Updated__c, 
                 Id__c 
-            FROM Job__c
+            FROM Job__c 
+            WITH USER_MODE
         ];
     }
 
     @AuraEnabled
     public static void deleteJobs(List<String> recordIds) {
-        delete [SELECT Id FROM Job__c WHERE Id IN :recordIds];
+        if (Schema.sObjectType.Job__c.isDeletable()) {
+            delete as user [SELECT Id FROM Job__c WHERE Id IN :recordIds WITH USER_MODE];
+        }
+    }
+
+    @AuraEnabled
+    public static void deleteAllJobs() {
+        if (Schema.sObjectType.Job__c.isDeletable()) {
+            delete as user [SELECT Id FROM Job__c WITH USER_MODE];
+        }
     }
 }

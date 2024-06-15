@@ -2,65 +2,21 @@
 private class JobApplicationCleaningQueueableTest {
     @TestSetup
     private static void setup() {
-        List<Job_Application__c> jobApplicationsToInsert = new List<Job_Application__c>();
+        List<Job_Application__c> jobApplicationsToInsert = new TestDataFactory().createJobApplications_setup_JobApplicationCleaningQueueableTest();
 
-        Job_Application__c jobApplicationSavedFollowUp29DaysAgo = new Job_Application__c(
-            Status__c = 'Saved', 
-            Follow_Up_Date__c = Date.today() - 29
-        );
-
-        jobApplicationsToInsert.add(jobApplicationSavedFollowUp29DaysAgo);
-
-        Job_Application__c jobApplicationSavedFollowUp30DaysAgo = new Job_Application__c(
-            Status__c = 'Saved', 
-            Follow_Up_Date__c = Date.today() - 30
-        );
-
-        jobApplicationsToInsert.add(jobApplicationSavedFollowUp30DaysAgo);
-
-        Job_Application__c jobApplicationApplyingFollowUp29DaysAgo = new Job_Application__c(
-            Status__c = 'Applying', 
-            Follow_Up_Date__c = Date.today() - 29, 
-            Notes__c = 'test note'
-        );
-
-        jobApplicationsToInsert.add(jobApplicationApplyingFollowUp29DaysAgo);
-
-        Job_Application__c jobApplicationApplyingFollowUp30DaysAgo = new Job_Application__c(
-            Status__c = 'Applying', 
-            Follow_Up_Date__c = Date.today() - 30, 
-            Notes__c = 'test note'
-        );
-
-        jobApplicationsToInsert.add(jobApplicationApplyingFollowUp30DaysAgo);
-
-        Job_Application__c jobApplicationAcceptedFollowUp29DaysAgo = new Job_Application__c(
-            Status__c = 'Accepted', 
-            Follow_Up_Date__c = Date.today() - 29
-        );
-
-        jobApplicationsToInsert.add(jobApplicationAcceptedFollowUp29DaysAgo);
-
-        Job_Application__c jobApplicationAcceptedFollowUp30DaysAgo = new Job_Application__c(
-            Status__c = 'Accepted', 
-            Follow_Up_Date__c = Date.today() - 30
-        );
-
-        jobApplicationsToInsert.add(jobApplicationAcceptedFollowUp30DaysAgo);
-
-        insert jobApplicationsToInsert;
+        if (Schema.sObjectType.Job_Application__c.isCreateable()) {
+            insert as user jobApplicationsToInsert;
+        }
     }
 
     @IsTest
-    private static void cleanStaleJobApplication_Enqueue_ExpectTwoStaleJobApplicationsWithClosedStatus() {
+    private static void update_two_job_applications_status_to_Closed() {
         // GIVEN
 
         // WHEN
         Test.startTest();
 
         Id jobId = System.enqueueJob(new JobApplicationCleaningQueueable());
-
-        System.debug('jobId = ' + jobId);
 
         AsyncApexJob jobInfo_WHEN = [
             SELECT 
@@ -70,10 +26,9 @@ private class JobApplicationCleaningQueueableTest {
                 NumberOfErrors 
             FROM AsyncApexJob 
             WHERE Id = :jobId 
+            WITH USER_MODE 
             LIMIT 1
         ];
-
-        System.debug('jobInfo_WHEN = ' + jobInfo_WHEN);
 
         System.assertEquals('Queued', jobInfo_WHEN.Status, 'Expect Status to be Queued');
         System.assertEquals(0, jobInfo_WHEN.TotalJobItems, 'Expect 0 TotalJobItems');
@@ -83,17 +38,20 @@ private class JobApplicationCleaningQueueableTest {
         Test.stopTest();
 
         // THEN
+        final String CLOSED = 'Closed';
+
         List<Job_Application__c> retrievedJobApplications = [
             SELECT 
                 Status__c, 
                 Follow_Up_Date__c 
             FROM Job_Application__c 
-            WHERE Status__c = 'Closed' 
+            WHERE Status__c = :CLOSED 
                 AND Follow_Up_Date__c != null 
-                AND Follow_Up_Date__c <= N_DAYS_AGO:30
+                AND Follow_Up_Date__c <= N_DAYS_AGO:30 
+            WITH USER_MODE
         ];
 
-        System.assertEquals(2, retrievedJobApplications.size(), 'Expect 2 stale job applications with closed status');
+        System.assertEquals(2, retrievedJobApplications.size(), 'Expect 2 stale job applications with Closed status');
 
         AsyncApexJob jobInfo_THEN = [
             SELECT 
@@ -103,10 +61,9 @@ private class JobApplicationCleaningQueueableTest {
                 NumberOfErrors 
             FROM AsyncApexJob 
             WHERE Id = :jobId 
+            WITH USER_MODE 
             LIMIT 1
         ];
-
-        System.debug('jobInfo_THEN = ' + jobInfo_THEN);
 
         System.assertEquals('Completed', jobInfo_THEN.Status, 'Expect Status to be Completed');
         System.assertEquals(0, jobInfo_THEN.TotalJobItems, 'Expect 0 TotalJobItems');

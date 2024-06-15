@@ -266,9 +266,5 @@
         <members>Images</members>
         <name>StaticResource</name>
     </types>
-    <types>
-        <members>Account.Billing</members>
-        <name>WebLink</name>
-    </types>
     <version>60.0</version>
 </Package>

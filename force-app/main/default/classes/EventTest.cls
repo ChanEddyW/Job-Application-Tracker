@@ -1,38 +1,21 @@
 @IsTest
 private with sharing class EventTest {
+    private static final List<String> SUBJECTS = new List<String>{
+        'codeEveryDay', 
+        'informationalInterview'
+    };
+
     @TestSetup
     private static void setup() {
-        List<Event> eventsToInsert = new List<Event>();
+        List<Event> eventsToInsert = new TestDataFactory().createEvents_setup();
 
-        Event codeEveryDay = new Event(
-            Subject = 'codeEveryDay', 
-            StartDateTime = Datetime.newInstance(2024, 04, 01, 05, 00, 00), 
-            EndDateTime = Datetime.newInstance(2024, 04, 01, 06, 00, 00)
-        );
-
-        eventsToInsert.add(codeEveryDay);
-
-        Event dangerousCommute = new Event(
-            Subject = 'dangerousCommute', 
-            StartDateTime = Datetime.newInstance(2024, 04, 01, 10, 00, 00), 
-            EndDateTime = Datetime.newInstance(2024, 04, 01, 13, 00, 00)
-        );
-
-        eventsToInsert.add(dangerousCommute);
-
-        Event informationalInterview = new Event(
-            Subject = 'informationalInterview', 
-            StartDateTime = Datetime.newInstance(2024, 04, 01, 17, 00, 00), 
-            EndDateTime = Datetime.newInstance(2024, 04, 01, 20, 00, 00)
-        );
-
-        eventsToInsert.add(informationalInterview);
-
-        insert eventsToInsert;
+        if (Schema.sObjectType.Event.isCreateable()) {
+            insert as user eventsToInsert;
+        }
     }
 
     @IsTest
-    private static void validateStartDTIsBeforeEndDT_Insert() {
+    private static void startDT_cannot_be_after_endDT_on_insert() {
         // GIVEN
         Event phoneScreen = new Event(
             Subject = 'phoneScreen', 
@@ -44,25 +27,25 @@ private with sharing class EventTest {
         Test.startTest();
 
         try {
-            insert phoneScreen;
+            if (Schema.sObjectType.Event.isCreateable()) {
+                insert as user phoneScreen;
+            }
 
+            Test.stopTest();
+
+            // THEN
             Assert.fail('Expect exception');
         } catch (Exception e) {
-            // THEN
-            System.debug('Exception message = ' + e.getMessage());
-
             System.assertEquals(
                 'FIELD_INTEGRITY_EXCEPTION, Event duration cannot be negative', 
                 e.getMessage().substringBetween('first error: ', ': ['), 
                 'Exception message does not match: ' + e.getMessage()
             );
         }
-
-        Test.stopTest();
     }
 
     @IsTest
-    private static void validateStartDTIsBeforeEndDT_Update() {
+    private static void startDT_cannot_be_after_endDT_on_update() {
         // GIVEN
         List<Event> eventsToUpdate = [
             SELECT 
@@ -71,10 +54,8 @@ private with sharing class EventTest {
                 StartDateTime, 
                 EndDateTime 
             FROM Event 
-            WHERE Subject IN (
-                    'codeEveryDay', 
-                    'informationalInterview'
-                )
+            WHERE Subject IN :SUBJECTS 
+            WITH USER_MODE
         ];
 
         for (Event eventToUpdate : eventsToUpdate) {
@@ -91,25 +72,25 @@ private with sharing class EventTest {
         Test.startTest();
 
         try {
-            update eventsToUpdate;
+            if (Schema.sObjectType.Event.isUpdateable()) {
+                update as user eventsToUpdate;
+            }
 
+            Test.stopTest();
+
+            // THEN
             Assert.fail('Expect exception');
         } catch (Exception e) {
-            // THEN
-            System.debug('Exception message = ' + e.getMessage());
-
             System.assertEquals(
                 'FIELD_INTEGRITY_EXCEPTION, Event duration cannot be negative', 
                 e.getMessage().substringBetween('first error: ', ': ['), 
                 'Exception message does not match: ' + e.getMessage()
             );
         }
-
-        Test.stopTest();
     }
 
     @IsTest
-    private static void validateNoEventOnWeekend_Insert() {
+    private static void cannot_schedule_event_on_weekend_on_insert() {
         // GIVEN
         Event phoneScreen = new Event(
             Subject = 'phoneScreen', 
@@ -121,25 +102,25 @@ private with sharing class EventTest {
         Test.startTest();
 
         try {
-            insert phoneScreen;
+            if (Schema.sObjectType.Event.isCreateable()) {
+                insert as user phoneScreen;
+            }
 
+            Test.stopTest();
+
+            // THEN
             Assert.fail('Expect exception');
         } catch (Exception e) {
-            // THEN
-            System.debug('Exception message = ' + e.getMessage());
-
             System.assertEquals(
                 'FIELD_CUSTOM_VALIDATION_EXCEPTION, Cannot schedule event on the weekend', 
                 e.getMessage().substringBetween('first error: ', ': ['), 
                 'Exception message does not match: ' + e.getMessage()
             );
         }
-
-        Test.stopTest();
     }
 
     @IsTest
-    private static void validateNoEventOnWeekend_Update() {
+    private static void cannot_schedule_event_on_weekend_on_update() {
         // GIVEN
         List<Event> eventsToUpdate = [
             SELECT 
@@ -148,10 +129,8 @@ private with sharing class EventTest {
                 StartDateTime, 
                 EndDateTime 
             FROM Event 
-            WHERE Subject IN (
-                    'codeEveryDay', 
-                    'informationalInterview'
-                )
+            WHERE Subject IN :SUBJECTS 
+            WITH USER_MODE
         ];
 
         for (Event eventToUpdate : eventsToUpdate) {
@@ -168,25 +147,25 @@ private with sharing class EventTest {
         Test.startTest();
 
         try {
-            update eventsToUpdate;
+            if (Schema.sObjectType.Event.isUpdateable()) {
+                update as user eventsToUpdate;
+            }
 
+            Test.stopTest();
+
+            // THEN
             Assert.fail('Expect exception');
         } catch (Exception e) {
-            // THEN
-            System.debug('Exception message = ' + e.getMessage());
-
             System.assertEquals(
                 'FIELD_CUSTOM_VALIDATION_EXCEPTION, Cannot schedule event on the weekend', 
                 e.getMessage().substringBetween('first error: ', ': ['), 
                 'Exception message does not match: ' + e.getMessage()
             );
         }
-
-        Test.stopTest();
     }
 
     @IsTest
-    private static void validateNoEventOverlap_newStartDT_existingStartDT_existingEndDT_newEndDT_Insert() {
+    private static void cannot_overlap_event_newStartDT_existingStartDT_existingEndDT_newEndDT_on_insert() {
         // GIVEN
         Event phoneScreen = new Event(
             Subject = 'phoneScreen', 
@@ -198,25 +177,25 @@ private with sharing class EventTest {
         Test.startTest();
 
         try {
-            insert phoneScreen;
+            if (Schema.sObjectType.Event.isCreateable()) {
+                insert as user phoneScreen;
+            }
 
+            Test.stopTest();
+
+            // THEN
             Assert.fail('Expect exception');
         } catch (Exception e) {
-            // THEN
-            System.debug('Exception message = ' + e.getMessage());
-
             System.assertEquals(
                 'FIELD_CUSTOM_VALIDATION_EXCEPTION, Cannot overlap event: newStartDT existingStartDT existingEndDT newEndDT', 
                 e.getMessage().substringBetween('first error: ', ': ['), 
                 'Exception message does not match: ' + e.getMessage()
             );
         }
-
-        Test.stopTest();
     }
 
     @IsTest
-    private static void validateNoEventOverlap_newStartDT_existingStartDT_existingEndDT_newEndDT_Update() {
+    private static void cannot_overlap_event_newStartDT_existingStartDT_existingEndDT_newEndDT_on_update() {
         // GIVEN
         List<Event> eventsToUpdate = [
             SELECT 
@@ -225,10 +204,8 @@ private with sharing class EventTest {
                 StartDateTime, 
                 EndDateTime 
             FROM Event 
-            WHERE Subject IN (
-                    'codeEveryDay', 
-                    'informationalInterview'
-                )
+            WHERE Subject IN :SUBJECTS 
+            WITH USER_MODE
         ];
 
         for (Event eventToUpdate : eventsToUpdate) {
@@ -245,25 +222,25 @@ private with sharing class EventTest {
         Test.startTest();
 
         try {
-            update eventsToUpdate;
+            if (Schema.sObjectType.Event.isUpdateable()) {
+                update as user eventsToUpdate;
+            }
 
+            Test.stopTest();
+
+            // THEN
             Assert.fail('Expect exception');
         } catch (Exception e) {
-            // THEN
-            System.debug('Exception message = ' + e.getMessage());
-
             System.assertEquals(
                 'FIELD_CUSTOM_VALIDATION_EXCEPTION, Cannot overlap event: newStartDT existingStartDT existingEndDT newEndDT', 
                 e.getMessage().substringBetween('first error: ', ': ['), 
                 'Exception message does not match: ' + e.getMessage()
             );
         }
-
-        Test.stopTest();
     }
 
     @IsTest
-    private static void validateNoEventOverlap_newStartDT_existingStartDT_newEndDT_existingEndDT_Insert() {
+    private static void cannot_overlap_event_newStartDT_existingStartDT_newEndDT_existingEndDT_on_insert() {
         // GIVEN
         Event phoneScreen = new Event(
             Subject = 'phoneScreen', 
@@ -275,25 +252,25 @@ private with sharing class EventTest {
         Test.startTest();
 
         try {
-            insert phoneScreen;
+            if (Schema.sObjectType.Event.isCreateable()) {
+                insert as user phoneScreen;
+            }
 
+            Test.stopTest();
+
+            // THEN
             Assert.fail('Expect exception');
         } catch (Exception e) {
-            // THEN
-            System.debug('Exception message = ' + e.getMessage());
-
             System.assertEquals(
                 'FIELD_CUSTOM_VALIDATION_EXCEPTION, Cannot overlap event: newStartDT existingStartDT newEndDT existingEndDT', 
                 e.getMessage().substringBetween('first error: ', ': ['), 
                 'Exception message does not match: ' + e.getMessage()
             );
         }
-
-        Test.stopTest();
     }
 
     @IsTest
-    private static void validateNoEventOverlap_newStartDT_existingStartDT_newEndDT_existingEndDT_Update() {
+    private static void cannot_overlap_event_newStartDT_existingStartDT_newEndDT_existingEndDT_on_update() {
         // GIVEN
         List<Event> eventsToUpdate = [
             SELECT 
@@ -302,10 +279,8 @@ private with sharing class EventTest {
                 StartDateTime, 
                 EndDateTime 
             FROM Event 
-            WHERE Subject IN (
-                    'codeEveryDay', 
-                    'informationalInterview'
-                )
+            WHERE Subject IN :SUBJECTS 
+            WITH USER_MODE
         ];
 
         for (Event eventToUpdate : eventsToUpdate) {
@@ -322,25 +297,25 @@ private with sharing class EventTest {
         Test.startTest();
 
         try {
-            update eventsToUpdate;
+            if (Schema.sObjectType.Event.isUpdateable()) {
+                update as user eventsToUpdate;
+            }
 
+            Test.stopTest();
+
+            // THEN
             Assert.fail('Expect exception');
         } catch (Exception e) {
-            // THEN
-            System.debug('Exception message = ' + e.getMessage());
-
             System.assertEquals(
                 'FIELD_CUSTOM_VALIDATION_EXCEPTION, Cannot overlap event: newStartDT existingStartDT newEndDT existingEndDT', 
                 e.getMessage().substringBetween('first error: ', ': ['), 
                 'Exception message does not match: ' + e.getMessage()
             );
         }
-
-        Test.stopTest();
     }
 
     @IsTest
-    private static void validateNoEventOverlap_existingStartDT_newStartDT_existingEndDT_newEndDT_Insert() {
+    private static void cannot_overlap_event_existingStartDT_newStartDT_existingEndDT_newEndDT_on_insert() {
         // GIVEN
         Event phoneScreen = new Event(
             Subject = 'phoneScreen', 
@@ -352,25 +327,25 @@ private with sharing class EventTest {
         Test.startTest();
 
         try {
-            insert phoneScreen;
+            if (Schema.sObjectType.Event.isCreateable()) {
+                insert as user phoneScreen;
+            }
 
+            Test.stopTest();
+
+            // THEN
             Assert.fail('Expect exception');
         } catch (Exception e) {
-            // THEN
-            System.debug('Exception message = ' + e.getMessage());
-
             System.assertEquals(
                 'FIELD_CUSTOM_VALIDATION_EXCEPTION, Cannot overlap event: existingStartDT newStartDT existingEndDT newEndDT', 
                 e.getMessage().substringBetween('first error: ', ': ['), 
                 'Exception message does not match: ' + e.getMessage()
             );
         }
-
-        Test.stopTest();
     }
 
     @IsTest
-    private static void validateNoEventOverlap_existingStartDT_newStartDT_existingEndDT_newEndDT_Update() {
+    private static void cannot_overlap_event_existingStartDT_newStartDT_existingEndDT_newEndDT_on_update() {
         // GIVEN
         List<Event> eventsToUpdate = [
             SELECT 
@@ -379,10 +354,8 @@ private with sharing class EventTest {
                 StartDateTime, 
                 EndDateTime 
             FROM Event 
-            WHERE Subject IN (
-                    'codeEveryDay', 
-                    'informationalInterview'
-                )
+            WHERE Subject IN :SUBJECTS 
+            WITH USER_MODE
         ];
 
         for (Event eventToUpdate : eventsToUpdate) {
@@ -399,25 +372,25 @@ private with sharing class EventTest {
         Test.startTest();
 
         try {
-            update eventsToUpdate;
+            if (Schema.sObjectType.Event.isUpdateable()) {
+                update as user eventsToUpdate;
+            }
 
+            Test.stopTest();
+
+            // THEN
             Assert.fail('Expect exception');
         } catch (Exception e) {
-            // THEN
-            System.debug('Exception message = ' + e.getMessage());
-
             System.assertEquals(
                 'FIELD_CUSTOM_VALIDATION_EXCEPTION, Cannot overlap event: existingStartDT newStartDT existingEndDT newEndDT', 
                 e.getMessage().substringBetween('first error: ', ': ['), 
                 'Exception message does not match: ' + e.getMessage()
             );
         }
-
-        Test.stopTest();
     }
 
     @IsTest
-    private static void validateNoEventOverlap_existingStartDT_newStartDT_newEndDT_existingEndDT_Insert() {
+    private static void cannot_overlap_event_existingStartDT_newStartDT_newEndDT_existingEndDT_on_insert() {
         // GIVEN
         Event phoneScreen = new Event(
             Subject = 'phoneScreen', 
@@ -429,25 +402,25 @@ private with sharing class EventTest {
         Test.startTest();
 
         try {
-            insert phoneScreen;
+            if (Schema.sObjectType.Event.isCreateable()) {
+                insert as user phoneScreen;
+            }
 
+            Test.stopTest();
+
+            // THEN
             Assert.fail('Expect exception');
         } catch (Exception e) {
-            // THEN
-            System.debug('Exception message = ' + e.getMessage());
-
             System.assertEquals(
                 'FIELD_CUSTOM_VALIDATION_EXCEPTION, Cannot overlap event: existingStartDT newStartDT newEndDT existingEndDT', 
                 e.getMessage().substringBetween('first error: ', ': ['), 
                 'Exception message does not match: ' + e.getMessage()
             );
         }
-
-        Test.stopTest();
     }
 
     @IsTest
-    private static void validateNoEventOverlap_existingStartDT_newStartDT_newEndDT_existingEndDT_Update() {
+    private static void cannot_overlap_event_existingStartDT_newStartDT_newEndDT_existingEndDT_on_update() {
         // GIVEN
         List<Event> eventsToUpdate = [
             SELECT 
@@ -456,10 +429,8 @@ private with sharing class EventTest {
                 StartDateTime, 
                 EndDateTime 
             FROM Event 
-            WHERE Subject IN (
-                    'codeEveryDay', 
-                    'informationalInterview'
-                )
+            WHERE Subject IN :SUBJECTS 
+            WITH USER_MODE
         ];
 
         for (Event eventToUpdate : eventsToUpdate) {
@@ -476,20 +447,20 @@ private with sharing class EventTest {
         Test.startTest();
 
         try {
-            update eventsToUpdate;
+            if (Schema.sObjectType.Event.isUpdateable()) {
+                update as user eventsToUpdate;
+            }
 
+            Test.stopTest();
+
+            // THEN
             Assert.fail('Expect exception');
         } catch (Exception e) {
-            // THEN
-            System.debug('Exception message = ' + e.getMessage());
-
             System.assertEquals(
                 'FIELD_CUSTOM_VALIDATION_EXCEPTION, Cannot overlap event: existingStartDT newStartDT newEndDT existingEndDT', 
                 e.getMessage().substringBetween('first error: ', ': ['), 
                 'Exception message does not match: ' + e.getMessage()
             );
         }
-
-        Test.stopTest();
     }
 }

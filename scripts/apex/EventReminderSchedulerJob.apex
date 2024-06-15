@@ -1,4 +1,4 @@
-String CRON_EXP = '0 0 7 * * ?';
+final String CRON_EXP = '0 0 7 * * ?';
 
 EventReminderScheduler job = new EventReminderScheduler();
 
@@ -14,6 +14,7 @@ CronTrigger cronTrigger = [
         TimesTriggered 
     FROM CronTrigger 
     WHERE Id = :jobId 
+    WITH USER_MODE 
     LIMIT 1
 ];
 

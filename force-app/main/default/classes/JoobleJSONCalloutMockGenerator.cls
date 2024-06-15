@@ -1,4 +1,7 @@
 public with sharing class JoobleJSONCalloutMockGenerator implements HttpCalloutMock {
+    @TestVisible
+    private Integer statusCode;
+
     public HTTPResponse respond(HTTPRequest req) {
         HttpResponse res = new HttpResponse();
 
@@ -10,7 +13,7 @@ public with sharing class JoobleJSONCalloutMockGenerator implements HttpCalloutM
             );
         }
 
-        res.setStatusCode(200);
+        res.setStatusCode(statusCode);
 
         return res;
     }

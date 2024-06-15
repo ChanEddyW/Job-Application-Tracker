@@ -1,6 +1,16 @@
 public with sharing class JobApplicationController {
     @AuraEnabled
     public static void upsertJobApplications(List<String> recordIds) {
+        List<Job_Application__c> jobApplicationsToUpsert = createJobApplicationsFromJobs(recordIds);
+
+        setStatusToSavedForJobApplicationsWithoutStatus(jobApplicationsToUpsert);
+
+        if (Schema.sObjectType.Job_Application__c.isCreateable() && Schema.sObjectType.Job_Application__c.isUpdateable()) {
+            upsert as user jobApplicationsToUpsert Job_Id__c;
+        }
+    }
+
+    private static List<Job_Application__c> createJobApplicationsFromJobs(List<String> recordIds) {
         List<Job__c> jobs = [
             SELECT 
                 Id, 
@@ -15,59 +25,48 @@ public with sharing class JobApplicationController {
                 Updated__c, 
                 Id__c 
             FROM Job__c 
-            WHERE Id IN :recordIds
+            WHERE Id IN :recordIds 
+            WITH USER_MODE
         ];
 
-        List<Job_Application__c> jobApplicationsToUpsert = new List<Job_Application__c>();
+        List<Job_Application__c> jobApplications = new List<Job_Application__c>();
 
         for (Job__c job : jobs) {
-            Job_Application__c jobApplicationToUpsert = new Job_Application__c(Status__c = 'Saved');
+            Job_Application__c jobApplication = new Job_Application__c();
 
             if (!String.isBlank(job.Title__c)) {
-                jobApplicationToUpsert.Position_Title__c = job.Title__c;
+                jobApplication.Position_Title__c = job.Title__c;
             }
 
             if (!String.isBlank(job.Location__c)) {
-                jobApplicationToUpsert.Location__c = job.Location__c;
+                jobApplication.Location__c = job.Location__c;
             }
 
             if (!String.isBlank(job.Snippet__c)) {
-                jobApplicationToUpsert.Job_Description__c = job.Snippet__c;
+                jobApplication.Job_Description__c = job.Snippet__c;
             }
 
             if (!String.isBlank(job.Salary__c)) {
                 try {
-                    jobApplicationToUpsert.Salary__c = Decimal.valueOf(job.Salary__c);
+                    jobApplication.Salary__c = Decimal.valueOf(job.Salary__c);
                 } catch (TypeException e) {
-                    System.debug(
-                        'Cannot put non-numerical value in Salary__c field — putting Salary__c in Job_Description__c field instead' 
-                        + ' | Exception Type = ' + e.getTypeName() 
-                        + ' | Exception Message = ' + e.getMessage()
-                    );
+                    final String SALARY_TO_JOB_DESCRIPTION = '\n\nSalary: ' + job.Salary__c;
 
-                    String salaryToJobDescription = '\n\nSalary: ' + job.Salary__c;
-
-                    System.debug('salaryToJobDescription = ' + salaryToJobDescription.trim());
-
-                    if (String.isBlank(jobApplicationToUpsert.Job_Description__c)) {
-                        jobApplicationToUpsert.Job_Description__c = salaryToJobDescription.trim();
+                    if (String.isBlank(jobApplication.Job_Description__c)) {
+                        jobApplication.Job_Description__c = SALARY_TO_JOB_DESCRIPTION.trim();
                     } else {
-                        jobApplicationToUpsert.Job_Description__c += salaryToJobDescription;
+                        jobApplication.Job_Description__c += SALARY_TO_JOB_DESCRIPTION;
                     }
                 }
             }
 
             if (!String.isBlank(job.Source__c)) {
-                System.debug('Putting Source__c in Job_Description__c field');
+                final String SOURCE_TO_JOB_DESCRIPTION = '\n\nSource: ' + job.Source__c;
 
-                String sourceToJobDescription = '\n\nSource: ' + job.Source__c;
-
-                System.debug('sourceToJobDescription = ' + sourceToJobDescription.trim());
-
-                if (String.isBlank(jobApplicationToUpsert.Job_Description__c)) {
-                    jobApplicationToUpsert.Job_Description__c = sourceToJobDescription.trim();
+                if (String.isBlank(jobApplication.Job_Description__c)) {
+                    jobApplication.Job_Description__c = SOURCE_TO_JOB_DESCRIPTION.trim();
                 } else {
-                    jobApplicationToUpsert.Job_Description__c += sourceToJobDescription;
+                    jobApplication.Job_Description__c += SOURCE_TO_JOB_DESCRIPTION;
                 }
             }
 
@@ -75,71 +74,35 @@ public with sharing class JobApplicationController {
                 !String.isBlank(job.Type__c) 
                 && (job.Type__c == 'Full-time' || job.Type__c == 'Temporary')
             ) {
-                jobApplicationToUpsert.Job_Type__c = job.Type__c;
+                jobApplication.Job_Type__c = job.Type__c;
             }
 
             if (!String.isBlank(job.Link__c)) {
-                jobApplicationToUpsert.URL__c = job.Link__c;
+                jobApplication.URL__c = job.Link__c;
             }
 
             if (!String.isBlank(job.Company__c)) {
-                jobApplicationToUpsert.Company__c = getAccId(job.Company__c);
+                jobApplication.Company__c = getAccId(job.Company__c);
             }
 
             if (!String.isBlank(String.valueOf(job.Updated__c))) {
-                System.debug('Putting Updated__c in Job_Description__c field');
+                final String DATE_UPDATED_TO_JOB_DESCRIPTION = '\n\nUpdated: ' + String.valueOf(job.Updated__c);
 
-                String updatedToJobDescription = '\n\nUpdated: ' + String.valueOf(job.Updated__c);
-
-                System.debug('updatedToJobDescription = ' + updatedToJobDescription.trim());
-
-                if (String.isBlank(jobApplicationToUpsert.Job_Description__c)) {
-                    jobApplicationToUpsert.Job_Description__c = updatedToJobDescription.trim();
+                if (String.isBlank(jobApplication.Job_Description__c)) {
+                    jobApplication.Job_Description__c = DATE_UPDATED_TO_JOB_DESCRIPTION.trim();
                 } else {
-                    jobApplicationToUpsert.Job_Description__c += updatedToJobDescription;
+                    jobApplication.Job_Description__c += DATE_UPDATED_TO_JOB_DESCRIPTION;
                 }
             }
 
             if (!String.isBlank(job.Id__c)) {
-                jobApplicationToUpsert.Job_Id__c = job.Id__c;
+                jobApplication.Job_Id__c = job.Id__c;
             }
 
-            jobApplicationsToUpsert.add(jobApplicationToUpsert);
+            jobApplications.add(jobApplication);
         }
 
-        Set<String> jobIds = new Set<String>();
-
-        for (Job_Application__c jobApplicationToUpsert : jobApplicationsToUpsert) {
-            jobIds.add(jobApplicationToUpsert.Job_Id__c);
-        }
-
-        List<Job_Application__c> existingJobApplicationsWithStatusNotNullAndSaved = [
-            SELECT 
-                Status__c, 
-                Job_Id__c 
-            FROM Job_Application__c 
-            WHERE Job_Id__c = :jobIds 
-                AND Status__c != null 
-                AND Status__c != 'Saved' 
-        ];
-
-        Map<String, String> statusesByJobId = new Map<String, String>();
-
-        for (Job_Application__c existingJobApplicationWithStatusNotNullAndSaved : existingJobApplicationsWithStatusNotNullAndSaved) {
-            if (!statusesByJobId.containsKey(existingJobApplicationWithStatusNotNullAndSaved.Job_Id__c)) {
-                statusesByJobId.put(existingJobApplicationWithStatusNotNullAndSaved.Job_Id__c, existingJobApplicationWithStatusNotNullAndSaved.Status__c);
-            }
-        }
-
-        for (Job_Application__c jobApplicationToUpsert : jobApplicationsToUpsert) {
-            if (statusesByJobId.containsKey(jobApplicationToUpsert.Job_Id__c)) {
-                jobApplicationToUpsert.Status__c = statusesByJobId.get(jobApplicationToUpsert.Job_Id__c);
-            }
-        }
-
-        System.debug('jobApplicationsToUpsert = ' + jobApplicationsToUpsert);
-
-        upsert jobApplicationsToUpsert Job_Id__c;
+        return jobApplications;
     }
 
     private static String getAccId(String company) {
@@ -152,6 +115,7 @@ public with sharing class JobApplicationController {
                     Name 
                 FROM Account 
                 WHERE Name = :company 
+                WITH USER_MODE 
                 LIMIT 1
             ];
 
@@ -166,10 +130,40 @@ public with sharing class JobApplicationController {
     }
 
     private static Id createAcc(String company) {
-        Account acctToInsert = new Account(Name = company);
+        Account accToInsert = new Account(Name = company);
 
-        insert acctToInsert;
+        if (Schema.sObjectType.Account.isCreateable()) {
+            insert as user accToInsert;
+        }
 
-        return acctToInsert.Id;
+        return accToInsert.Id;
+    }
+
+    private static void setStatusToSavedForJobApplicationsWithoutStatus(List<Job_Application__c> jobApplications) {
+        Set<String> jobIds = new Set<String>();
+
+        for (Job_Application__c jobApplication : jobApplications) {
+            jobIds.add(jobApplication.Job_Id__c);
+        }
+
+        List<Job_Application__c> existingJobApplicationsWithStatus = [
+            SELECT Job_Id__c 
+            FROM Job_Application__c 
+            WHERE Job_Id__c = :jobIds 
+                AND Status__c != null 
+            WITH USER_MODE
+        ];
+
+        Map<String, String> existingJobIdMap = new Map<String, String>();
+
+        for (Job_Application__c existingJobApplicationWithStatus : existingJobApplicationsWithStatus) {
+            existingJobIdMap.put(existingJobApplicationWithStatus.Job_Id__c, existingJobApplicationWithStatus.Job_Id__c);
+        }
+
+        for (Job_Application__c jobApplication : jobApplications) {
+            if (!existingJobIdMap.containsKey(jobApplication.Job_Id__c)) {
+                jobApplication.Status__c = 'Saved';
+            }
+        }
     }
 }

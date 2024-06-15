@@ -5,7 +5,8 @@ public with sharing class EventTriggerHandler {
                 StartDateTime, 
                 EndDateTime
             FROM Event 
-            WHERE Event.Id NOT IN :triggerDotNew
+            WHERE Event.Id NOT IN :triggerDotNew 
+            WITH USER_MODE
         ];
 
         for (Event newEvent : triggerDotNew) {
@@ -15,25 +16,31 @@ public with sharing class EventTriggerHandler {
             Long newEventStartDTInMilliseconds = newEventStartDT.getTime();
             Long newEventEndDTInMilliseconds = newEventEndDT.getTime();
 
-            if (
-                newEventStartDT.format('E') == 'Sat' 
-                || newEventStartDT.format('E') == 'Sun' 
-                || newEventEndDT.format('E') == 'Sat' 
-                || newEventEndDT.format('E') == 'Sun' 
-            ) {
+            if (isWeekend(newEventStartDT) || isWeekend(newEventEndDT)) {
                 newEvent.addError('Cannot schedule event on the weekend');
             } else if (!events.isEmpty()) {
-                String error = validateNoEventOverlap(events, newEventStartDTInMilliseconds, newEventEndDTInMilliseconds);
+                final String ERROR = validateNoEventOverlap(events, newEventStartDTInMilliseconds, newEventEndDTInMilliseconds);
 
                 if (error != null) {
-                    newEvent.addError(error);
+                    newEvent.addError(ERROR);
                 }
             }
         }
     }
 
+    private Boolean isWeekend(Datetime dt) {
+        final String SAT = 'Sat';
+        final String SUN = 'Sun';
+
+        if (dt.format('E') == SAT || dt.format('E') == SUN) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     private String validateNoEventOverlap(List<Event> events, Long newEventStartDTInMilliseconds, Long newEventEndDTInMilliseconds) {
-        String error;
+        final String ERROR;
 
         for (Event event : events) {
             Long eventStartDTInMilliseconds = event.StartDateTime.getTime();
@@ -43,25 +50,25 @@ public with sharing class EventTriggerHandler {
                 (newEventStartDTInMilliseconds <= eventStartDTInMilliseconds && eventStartDTInMilliseconds < newEventEndDTInMilliseconds) 
                 && (newEventStartDTInMilliseconds < eventEndDTInMilliseconds && eventEndDTInMilliseconds <= newEventEndDTInMilliseconds)
             ) {
-                error = 'Cannot overlap event: newStartDT existingStartDT existingEndDT newEndDT';
+                ERROR = 'Cannot overlap event: newStartDT existingStartDT existingEndDT newEndDT';
             } else if (
                 (newEventStartDTInMilliseconds <= eventStartDTInMilliseconds && eventStartDTInMilliseconds < newEventEndDTInMilliseconds) 
                 && (eventStartDTInMilliseconds < newEventEndDTInMilliseconds && newEventEndDTInMilliseconds <= eventEndDTInMilliseconds)
             ) {
-                error = 'Cannot overlap event: newStartDT existingStartDT newEndDT existingEndDT';
+                ERROR = 'Cannot overlap event: newStartDT existingStartDT newEndDT existingEndDT';
             } else if (
                 (eventStartDTInMilliseconds <= newEventStartDTInMilliseconds && newEventStartDTInMilliseconds < eventEndDTInMilliseconds) 
                 && (newEventStartDTInMilliseconds < eventEndDTInMilliseconds && eventEndDTInMilliseconds <= newEventEndDTInMilliseconds)
             ) {
-                error = 'Cannot overlap event: existingStartDT newStartDT existingEndDT newEndDT';
+                ERROR = 'Cannot overlap event: existingStartDT newStartDT existingEndDT newEndDT';
             } else if (
                 (eventStartDTInMilliseconds <= newEventStartDTInMilliseconds && newEventStartDTInMilliseconds < eventEndDTInMilliseconds) 
                 && (eventStartDTInMilliseconds < newEventEndDTInMilliseconds && newEventEndDTInMilliseconds <= eventEndDTInMilliseconds)
             ) {
-                error = 'Cannot overlap event: existingStartDT newStartDT newEndDT existingEndDT';
+                ERROR = 'Cannot overlap event: existingStartDT newStartDT newEndDT existingEndDT';
             }
         }
 
-        return error;
+        return ERROR;
     }
 }

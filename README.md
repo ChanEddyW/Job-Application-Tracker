@@ -44,8 +44,8 @@ Key Recommendations 📝
 1. Clone the Job Application Tracker repository:
 
     ```
-    git clone https://github.com/Cloud-Code-Academy/job-application-tracker-warren-s-warriors
-    cd job-application-tracker-warren-s-warriors
+    git clone https://github.com/ChanEddyW/Job-Application-Tracker
+    cd Job-Application-Tracker
     ```
 
 1. Create a scratch org and provide it with an alias (**jat** in the command below):
@@ -105,6 +105,7 @@ Let's see how a job seeker named Jane would use this app at a high level
 ![Entity Diagram](force-app/main/default/staticresources/Images/CloudCodeAcademyCapstoneEntityDiagram.png)
 
 ### Job (`Job__c`)
+
 A custom object for temporarily storing jobs from an external job board
 
 | Field         | Type                                         | Additional Info                              |
@@ -122,6 +123,7 @@ A custom object for temporarily storing jobs from an external job board
 | `Id__c`       | Text (External ID) (Unique Case Insensitive) | Job Id                                       |
 
 ### Job Application (`Job_Application__c`)
+
 A custom object for storing job applications
 
 | Field                     | Type                                         | Additional Info                                                                                                                                |
@@ -149,6 +151,7 @@ A custom object for storing job applications
 | `Take_Home_Pay__c`        | Formula (Number)                             | Estimate of take-home pay                                                                                                                      |
 
 ### Job Application Contact (`Job_Application_Contact__c`)
+
 A custom object for storing job application contacts
 
 | Field                | Type        | Additional Info                                                                                |

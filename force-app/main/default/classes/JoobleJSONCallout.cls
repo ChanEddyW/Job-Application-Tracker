@@ -1,4 +1,6 @@
 public with sharing class JoobleJSONCallout {
+    public class JoobleJSONCalloutException extends Exception {}
+
     @AuraEnabled
     @future(callout=true)
     public static void makePOSTCallout(
@@ -38,29 +40,25 @@ public with sharing class JoobleJSONCallout {
 
         String resBody = res.getBody().stripHtmlTags();
 
-        System.debug('resBody = ' + resBody);
-
         if (res.getStatusCode() == 200) {
-            delete [SELECT Id FROM Job__c];
+            delete as user [SELECT Id FROM Job__c WITH USER_MODE];
 
             List<Job__c> jobs = createJobsFromJson(resBody);
 
-            upsert jobs Id__c;
+            if (Schema.sObjectType.Job__c.isCreateable()) {
+                insert as user jobs;
+            }
         } else {
-            System.debug('HTTP request failed. Status Code: ' + res.getStatusCode() + ' | Response Body: ' + resBody);
+            throw new JoobleJSONCalloutException('HTTP request failed | Status Code: ' + res.getStatusCode());
         }
     }
 
     private static List<Job__c> createJobsFromJson(String resBody) {
         List<Object> jobs = getJobsObjectsFromJson(resBody);
 
-        Integer loopCount = 0;
-
         List<Job__c> jobsToUpsert = new List<Job__c>();
 
         for (Object job : jobs) {
-            loopCount++;
-
             Map<String, Object> jobFieldMap = (Map<String, Object>) job;
 
             String title = String.valueOf(jobFieldMap.get('title'));
@@ -75,21 +73,6 @@ public with sharing class JoobleJSONCallout {
             String jobId = String.valueOf(jobFieldMap.get('id'));
 
             Datetime updatedDT = Datetime.valueof(updated.substringBefore('.').replace('T', ' '));
-
-            System.debug('----------BEGIN LOOP ' + loopCount + ' ----------');
-
-            System.debug('title = ' + title);
-            System.debug('location = ' + location);
-            System.debug('snippet = ' + snippet);
-            System.debug('salary = ' + salary);
-            System.debug('source = ' + source);
-            System.debug('type = ' + jobType);
-            System.debug('link = ' + link);
-            System.debug('company = ' + company);
-            System.debug('updatedDT = ' + updatedDT);
-            System.debug('jobId = ' + jobId);
-
-            System.debug('----------END LOOP ' + loopCount + ' ----------');
 
             Job__c jobToUpsert = new Job__c();
 
@@ -135,8 +118,6 @@ public with sharing class JoobleJSONCallout {
 
             jobsToUpsert.add(jobToUpsert);
         }
-
-        System.debug('jobsToUpsert = ' + jobsToUpsert);
 
         return jobsToUpsert;
     }

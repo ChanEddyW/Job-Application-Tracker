@@ -2,108 +2,61 @@
 private with sharing class JobApplicationControllerTest {
     @TestSetup
     private static void setup() {
-        List<Job__c> jobsToInsert = new List<Job__c>();
+        TestDataFactory testDataFactory = new TestDataFactory();
 
-        Job__c jobJrSFDev = new Job__c(
-            Title__c = 'Junior Salesforce Developer', 
-            Location__c = 'Brooklyn, NY', 
-            Snippet__c = '...No actual work experience No problem Apply if you got the skills to do the work...', 
-            Salary__c = '$3,210 per week', 
-            Source__c = 'nowhere.com', 
-            Type__c = 'Full-time', 
-            Link__c = 'https://careers.codeeveryday.com/en/jobs', 
-            Company__c = 'CodeEveryDay', 
-            Updated__c = Datetime.now() - 30, 
-            Id__c = '-1234567890123456789'
+        List<Job__c> jobsToInsert = testDataFactory.createJobs_setup_JobApplicationControllerTest();
+
+        if (Schema.sObjectType.Job__c.isCreateable()) {
+            insert as user jobsToInsert;
+        }
+
+        Job__c jobJrSFDev;
+        Job__c jobSFDev;
+
+        for (Job__c jobToInsert : jobsToInsert) {
+            if (jobToInsert.Title__c == 'Junior Salesforce Developer') {
+                jobJrSFDev = jobToInsert;
+            } else if (jobToInsert.Title__c == 'Salesforce Developer') {
+                jobSFDev = jobToInsert;
+            }
+        }
+
+        List<Account> acctsToInsert = testDataFactory.createAccts_setup_JobApplicationControllerTest();
+
+        if (Schema.sObjectType.Account.isCreateable()) {
+            insert as user acctsToInsert;
+        }
+
+        Id accCodeEveryDayId;
+        Id accSalesforceId;
+
+        for (Account accToInsert : acctsToInsert) {
+            if (accToInsert.Name == 'CodeEveryDay') {
+                accCodeEveryDayId = accToInsert.Id;
+            } else if (accToInsert.Name == 'Salesforce') {
+                accSalesforceId = accToInsert.Id;
+            }
+        }
+
+        List<Job_Application__c> jobApplicationsToInsert = testDataFactory.createJobApplications_setup_JobApplicationControllerTest(
+            jobJrSFDev, 
+            accCodeEveryDayId, 
+            jobSFDev, 
+            accSalesforceId
         );
 
-        jobsToInsert.add(jobJrSFDev);
-
-        Job__c jobSFDev = new Job__c(
-            Title__c = 'Salesforce Developer', 
-            Location__c = 'New York, NY', 
-            Snippet__c = '', 
-            Salary__c = '$90.1 - $95.9 per hour', 
-            Source__c = '', 
-            Type__c = 'Temporary', 
-            Link__c = 'https://careers.salesforce.com/en/jobs', 
-            Company__c = 'Salesforce', 
-            Id__c = '-2885668755075351000'
-        );
-
-        jobsToInsert.add(jobSFDev);
-
-        Job__c jobTempSFDev = new Job__c(
-            Title__c = 'Temporary Salesforce Developer', 
-            Location__c = 'Staten Island, NY', 
-            Snippet__c = '', 
-            Salary__c = '', 
-            Source__c = 'somewhere.com', 
-            Type__c = 'Temporary', 
-            Link__c = '', 
-            Company__c = 'Temporary Devs', 
-            Id__c = '-1234567890987654321'
-        );
-
-        jobsToInsert.add(jobTempSFDev);
-
-        Job__c jobSrSFDev = new Job__c(
-            Title__c = 'Sr Salesforce Developer', 
-            Location__c = 'Queens, NY', 
-            Snippet__c = '', 
-            Salary__c = '', 
-            Source__c = '', 
-            Type__c = 'Temporary', 
-            Link__c = 'https://jooble.org/desc/6407669124240902847?ckey=Salesforce+Developer&rgn=10&pos=20&groupId=40906&elckey=6560772729242811828&p=1&aq=426136413298815402&cid=3389&jobAge=133&relb=100&brelb=100&bscr=7124.704&scr=7124.704000000001', 
-            Company__c = 'Hirekeyz Inc', 
-            Updated__c = Datetime.now() - 30, 
-            Id__c = '6407669124240903000'
-        );
-
-        jobsToInsert.add(jobSrSFDev);
-
-        insert jobsToInsert;
-
-        List<Account> acctsToInsert = new List<Account>();
-
-        Account accCodeEveryDay = new Account(Name = jobJrSFDev.Company__c);
-
-        acctsToInsert.add(accCodeEveryDay);
-
-        Account accSalesforce = new Account(Name = jobSFDev.Company__c);
-
-        acctsToInsert.add(accSalesforce);
-
-        insert acctsToInsert;
-
-        List<Job_Application__c> jobApplicationsToInsert = new List<Job_Application__c>();
-
-        Job_Application__c jobApplicationJrSFDev = new Job_Application__c(
-            Status__c = 'Interviewing', 
-            Position_Title__c = jobJrSFDev.Title__c, 
-            Company__c = accCodeEveryDay.Id, 
-            Job_Id__c = jobJrSFDev.Id__c
-        );
-
-        jobApplicationsToInsert.add(jobApplicationJrSFDev);
-
-        Job_Application__c jobApplicationSFDev = new Job_Application__c(
-            Position_Title__c = jobSFDev.Title__c, 
-            Company__c = accSalesforce.Id, 
-            Job_Id__c = jobSFDev.Id__c
-        );
-
-        jobApplicationsToInsert.add(jobApplicationSFDev);
-
-        insert jobApplicationsToInsert;
+        if (Schema.sObjectType.Job_Application__c.isCreateable()) {
+            insert as user jobApplicationsToInsert;
+        }
     }
 
     @IsTest
-    private static void upsertJobApplications_ExpectFourJobsAndFourAccountsAndThreeJobApplicationsWithSavedStatus() {
+    private static void upsert_job_applications_results_in_four_accounts_and_three_job_applications_with_Saved_status() {
         // GIVEN
         List<Job__c> jobs = [
             SELECT Id 
-            FROM Job__c
+            FROM Job__c 
+            WITH USER_MODE
         ];
 
         List<String> recordIds = new List<String>();
@@ -120,68 +73,23 @@ private with sharing class JobApplicationControllerTest {
         Test.stopTest();
 
         // THEN
-        List<Job__c> retrievedJobs = [
-            SELECT Id 
-            FROM Job__c 
-            WHERE Title__c LIKE '%Salesforce Developer%' 
-                AND Location__c LIKE '%NY%' 
-                AND Salary__c IN (
-                    '$3,210 per week', 
-                    '$90.1 - $95.9 per hour', 
-                    null
-                )
-                AND Source__c IN (
-                    'nowhere.com', 
-                    'somewhere.com', 
-                    null
-                )
-                AND Type__c IN (
-                    'Full-time', 
-                    'Temporary'
-                )
-                AND Company__c IN (
-                    'CodeEveryDay', 
-                    'Salesforce', 
-                    'Temporary Devs', 
-                    'Hirekeyz Inc'
-                )
-                AND Id__c IN (
-                    '-1234567890123456789', 
-                    '-2885668755075351000', 
-                    '-1234567890987654321', 
-                    '6407669124240903000'
-                )
-        ];
-
-        System.assertEquals(4, retrievedJobs.size(), 'Expect 4 jobs');
-
         List<Account> retrievedAccts = [
             SELECT Id 
             FROM Account 
-            WHERE Name IN (
-                    'CodeEveryDay', 
-                    'Salesforce', 
-                    'Temporary Devs', 
-                    'Hirekeyz Inc'
-                )
+            WITH USER_MODE
         ];
 
         System.assertEquals(4, retrievedAccts.size(), 'Expect 4 accounts');
 
+        final String SAVED = 'Saved';
+
         List<Job_Application__c> retrievedJobApplications = [
             SELECT Id 
             FROM Job_Application__c 
-            WHERE Status__c = 'Saved' 
-                AND Position_Title__c LIKE '%Salesforce Developer%' 
-                AND Location__c LIKE '%NY%' 
-                AND Job_Id__c IN (
-                    '-1234567890123456789', 
-                    '-2885668755075351000', 
-                    '-1234567890987654321', 
-                    '6407669124240903000'
-                )
+            WHERE Status__c = :SAVED 
+            WITH USER_MODE
         ];
 
-        System.assertEquals(3, retrievedJobApplications.size(), 'Expect 3 job applications with saved status');
+        System.assertEquals(3, retrievedJobApplications.size(), 'Expect 3 job applications with Saved status');
     }
 }

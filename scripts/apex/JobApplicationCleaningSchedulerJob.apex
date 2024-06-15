@@ -1,4 +1,4 @@
-String CRON_EXP = '0 0 1 * * ?';
+final String CRON_EXP = '0 0 1 * * ?';
 
 JobApplicationCleaningScheduler job = new JobApplicationCleaningScheduler();
 
@@ -14,6 +14,7 @@ CronTrigger cronTrigger = [
         TimesTriggered 
     FROM CronTrigger 
     WHERE Id = :jobId 
+    WITH USER_MODE 
     LIMIT 1
 ];
 

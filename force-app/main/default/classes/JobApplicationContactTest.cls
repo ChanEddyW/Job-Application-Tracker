@@ -1,53 +1,74 @@
 @IsTest
 private with sharing class JobApplicationContactTest {
+    private static TestDataFactory testDataFactory = new TestDataFactory();
+
+    private static final List<String> POSITION_TITLES = new List<String>{
+        'jobApplicationBlackthorn', 
+        'jobApplicationHTS', 
+        'jobApplicationBAH', 
+        'jobApplicationSalesforce'
+    };
+
     @TestSetup
     private static void setup() {
-        TestDataFactory testDataFactory = new TestDataFactory();
+        List<Account> acctsToInsert = testDataFactory.createAccts_setup_JobApplicationTest_JobApplicationContactTest();
 
-        List<Account> acctsToInsert = testDataFactory.createAccts_setup();
+        if (Schema.sObjectType.Account.isCreateable()) {
+            insert as user acctsToInsert;
+        }
 
-        Account accBlackthorn = new Account(Name = 'Blackthorn');
+        Id accBlackthornId;
+        Id accHTSId;
+        Id accBAHId;
+        Id accSalesforceId;
 
-        acctsToInsert.add(accBlackthorn);
+        for (Account accToInsert : acctsToInsert) {
+            if (accToInsert.Name == 'Blackthorn') {
+                accBlackthornId = accToInsert.Id;
+            } else if (accToInsert.Name == 'Hudson Technology Systems') {
+                accHTSId = accToInsert.Id;
+            } else if (accToInsert.Name == 'Booz Allen Hamilton') {
+                accBAHId = accToInsert.Id;
+            } else if (accToInsert.Name == 'Salesforce') {
+                accSalesforceId = accToInsert.Id;
+            }
+        }
 
-        Account accHTS = new Account(Name = 'Hudson Technology Systems');
+        List<Contact> contactsToInsert = testDataFactory.createContacts_setup_JobApplicationTest_JobApplicationContactTest();
 
-        acctsToInsert.add(accHTS);
+        if (Schema.sObjectType.Contact.isCreateable()) {
+            insert as user contactsToInsert;
+        }
 
-        insert acctsToInsert;
+        Id contactThornieId;
+        Id contactHudsonId;
 
-        List<Contact> contactsToInsert = testDataFactory.createContacts_setup();
+        for (Contact contactToInsert : contactsToInsert) {
+            if (contactToInsert.LastName == 'Thornie') {
+                contactThornieId = contactToInsert.Id;
+            } else if (contactToInsert.LastName == 'Hudson') {
+                contactHudsonId = contactToInsert.Id;
+            }
+        }
 
-        Contact contactThornie = new Contact(LastName = 'Thornie');
-
-        contactsToInsert.add(contactThornie);
-
-        Contact contactHudson = new Contact(LastName = 'Hudson');
-
-        contactsToInsert.add(contactHudson);
-
-        insert contactsToInsert;
-
-        List<Job_Application__c> jobApplicationsToInsert = testDataFactory.createJobApplications_setup(
-            accBlackthorn.Id, 
-            contactThornie.Id, 
-            accHTS.Id, 
-            contactHudson.Id
+        List<Job_Application__c> jobApplicationsToInsert = testDataFactory.createJobApplications_setup_JobApplicationContactTest(
+            accBlackthornId, 
+            contactThornieId, 
+            accHTSId, 
+            contactHudsonId, 
+            accBAHId, 
+            accSalesforceId
         );
 
-        insert jobApplicationsToInsert;
+        if (Schema.sObjectType.Job_Application__c.isCreateable()) {
+            insert as user jobApplicationsToInsert;
+        }
+
     }
 
     @IsTest
-    private static void setPrimaryContact() {
+    private static void update_job_application_primary_contact_on_insert() {
         // GIVEN
-        Map<String, Id> accIdMap = getAccIdMap();
-
-        Id accBlackthornId = accIdMap.get('Blackthorn');
-        Id accHTSId = accIdMap.get('HTS');
-        Id accBAHId = accIdMap.get('BAH');
-        Id accSalesforceId = accIdMap.get('Salesforce');
-
         Map<String, Id> contactIdMap = getContactIdMap();
 
         Id contactThornieId = contactIdMap.get('Thornie');
@@ -55,44 +76,14 @@ private with sharing class JobApplicationContactTest {
         Id contactBoozId = contactIdMap.get('Booz');
         Id contactBearId = contactIdMap.get('Bear');
 
-        List<Job_Application__c> jobApplications = new TestDataFactory().createJobApplications_setPrimaryContact(
-            accBAHId, 
-            accSalesforceId
-        );
+        Map<String, Id> jobApplicationIdMap = getJobApplicationIdMap();
 
-        insert jobApplications;
+        Id jobApplicationBlackthornId = jobApplicationIdMap.get('jobApplicationBlackthorn');
+        Id jobApplicationHTSId = jobApplicationIdMap.get('jobApplicationHTS');
+        Id jobApplicationBAHId = jobApplicationIdMap.get('jobApplicationBAH');
+        Id jobApplicationSalesforceId = jobApplicationIdMap.get('jobApplicationSalesforce');
 
-        List<Job_Application__c> retrievedJobApplicationsAfterInsertingApplications = [
-            SELECT 
-                Id, 
-                Company__c 
-            FROM Job_Application__c 
-            WHERE Company__c IN (
-                    :accBlackthornId, 
-                    :accHTSId, 
-                    :accBAHId, 
-                    :accSalesforceId
-                )
-        ];
-
-        Id jobApplicationBlackthornId;
-        Id jobApplicationHTSId;
-        Id jobApplicationBAHId;
-        Id jobApplicationSalesforceId;
-
-        for (Job_Application__c retrievedJobApplication : retrievedJobApplicationsAfterInsertingApplications) {
-            if (retrievedJobApplication.Company__c == accBlackthornId) {
-                jobApplicationBlackthornId = retrievedJobApplication.Id;
-            } else if (retrievedJobApplication.Company__c == accHTSId) {
-                jobApplicationHTSId = retrievedJobApplication.Id;
-            } else if (retrievedJobApplication.Company__c == accBAHId) {
-                jobApplicationBAHId = retrievedJobApplication.Id;
-            } else if (retrievedJobApplication.Company__c == accSalesforceId) {
-                jobApplicationSalesforceId = retrievedJobApplication.Id;
-            }
-        }
-
-        List<Job_Application_Contact__c> jobApplicationContacts = new TestDataFactory().createJobApplicationContacts_setPrimaryContact(
+        List<Job_Application_Contact__c> jobApplicationContacts = testDataFactory.createJobApplicationContacts_setPrimaryContact_JobApplicationContactTest(
             contactBoozId, 
             contactBearId, 
             jobApplicationBlackthornId, 
@@ -104,104 +95,58 @@ private with sharing class JobApplicationContactTest {
         // WHEN
         Test.startTest();
 
-        insert jobApplicationContacts;
+        if (Schema.sObjectType.Job_Application_Contact__c.isCreateable()) {
+            insert as user jobApplicationContacts;
+        }
+
+        Test.stopTest();
 
         // THEN
-        List<Job_Application__c> retrievedJobApplicationsAfterInsertingContacts = [
+        List<Job_Application__c> retrievedJobApplications = [
             SELECT Primary_Contact__c 
             FROM Job_Application__c 
-            WHERE Id IN :retrievedJobApplicationsAfterInsertingApplications
+            WHERE Position_Title__c IN :POSITION_TITLES 
+            WITH USER_MODE
         ];
 
-        List<Job_Application__c> retrievedJobApplicationsAfterInsertingContacts_Thornie = new List<Job_Application__c>();
-        List<Job_Application__c> retrievedJobApplicationsAfterInsertingContacts_Hudson = new List<Job_Application__c>();
-        List<Job_Application__c> retrievedJobApplicationsAfterInsertingContacts_Booz = new List<Job_Application__c>();
-        List<Job_Application__c> retrievedJobApplicationsAfterInsertingContacts_Bear = new List<Job_Application__c>();
+        List<Job_Application__c> retrievedJobApplications_Thornie = new List<Job_Application__c>();
+        List<Job_Application__c> retrievedJobApplications_Hudson = new List<Job_Application__c>();
+        List<Job_Application__c> retrievedJobApplications_Booz = new List<Job_Application__c>();
+        List<Job_Application__c> retrievedJobApplications_Bear = new List<Job_Application__c>();
 
-        for (Job_Application__c retrievedJobApplication : retrievedJobApplicationsAfterInsertingContacts) {
+        for (Job_Application__c retrievedJobApplication : retrievedJobApplications) {
             if (retrievedJobApplication.Primary_Contact__c == contactThornieId) {
-                retrievedJobApplicationsAfterInsertingContacts_Thornie.add(retrievedJobApplication);
+                retrievedJobApplications_Thornie.add(retrievedJobApplication);
             } else if (retrievedJobApplication.Primary_Contact__c == contactHudsonId) {
-                retrievedJobApplicationsAfterInsertingContacts_Hudson.add(retrievedJobApplication);
+                retrievedJobApplications_Hudson.add(retrievedJobApplication);
             } else if (retrievedJobApplication.Primary_Contact__c == contactBoozId) {
-                retrievedJobApplicationsAfterInsertingContacts_Booz.add(retrievedJobApplication);
+                retrievedJobApplications_Booz.add(retrievedJobApplication);
             } else if (retrievedJobApplication.Primary_Contact__c == contactBearId) {
-                retrievedJobApplicationsAfterInsertingContacts_Bear.add(retrievedJobApplication);
+                retrievedJobApplications_Bear.add(retrievedJobApplication);
             }
         }
 
-        System.assertEquals(1, retrievedJobApplicationsAfterInsertingContacts_Thornie.size(), 'Expect 1 job application with Thornie as primary contact');
-        System.assertEquals(1, retrievedJobApplicationsAfterInsertingContacts_Hudson.size(), 'Expect 1 job application with Hudson as primary contact');
-        System.assertEquals(1, retrievedJobApplicationsAfterInsertingContacts_Booz.size(), 'Expect 1 job application with Booz as primary contact');
-        System.assertEquals(1, retrievedJobApplicationsAfterInsertingContacts_Bear.size(), 'Expect 1 job application with Bear as primary contact');
-
-        for (Job_Application_Contact__c jobApplicationContact : jobApplicationContacts) {
-            jobApplicationContact.Contact__c = null;
-        }
-
-        update jobApplicationContacts;
-
-        for (Job_Application__c retrievedJobApplication : retrievedJobApplicationsAfterInsertingContacts) {
-            retrievedJobApplication.Primary_Contact__c = null;
-        }
-
-        update retrievedJobApplicationsAfterInsertingContacts;
-
-        for (Job_Application_Contact__c jobApplicationContact : jobApplicationContacts) {
-            if (jobApplicationContact.Job_Application__c == jobApplicationBlackthornId) {
-                jobApplicationContact.Contact__c = contactThornieId;
-            } else if (jobApplicationContact.Job_Application__c == jobApplicationHTSId) {
-                jobApplicationContact.Contact__c = contactHudsonId;
-            } else if (jobApplicationContact.Job_Application__c == jobApplicationBAHId) {
-                jobApplicationContact.Contact__c = contactBoozId;
-            } else if (jobApplicationContact.Job_Application__c == jobApplicationSalesforceId) {
-                jobApplicationContact.Contact__c = contactBearId;
-            }
-        }
-
-        update jobApplicationContacts;
-
-        List<Job_Application__c> retrievedJobApplicationsAfterUpdate = [
-            SELECT Primary_Contact__c 
-            FROM Job_Application__c 
-            WHERE Id IN :retrievedJobApplicationsAfterInsertingContacts
-        ];
-
-        List<Job_Application__c> retrievedJobApplicationsAfterUpdate_Thornie = new List<Job_Application__c>();
-        List<Job_Application__c> retrievedJobApplicationsAfterUpdate_Hudson = new List<Job_Application__c>();
-        List<Job_Application__c> retrievedJobApplicationsAfterUpdate_Booz = new List<Job_Application__c>();
-        List<Job_Application__c> retrievedJobApplicationsAfterUpdate_Bear = new List<Job_Application__c>();
-
-        for (Job_Application__c retrievedJobApplication : retrievedJobApplicationsAfterUpdate) {
-            if (retrievedJobApplication.Primary_Contact__c == contactThornieId) {
-                retrievedJobApplicationsAfterUpdate_Thornie.add(retrievedJobApplication);
-            } else if (retrievedJobApplication.Primary_Contact__c == contactHudsonId) {
-                retrievedJobApplicationsAfterUpdate_Hudson.add(retrievedJobApplication);
-            } else if (retrievedJobApplication.Primary_Contact__c == contactBoozId) {
-                retrievedJobApplicationsAfterUpdate_Booz.add(retrievedJobApplication);
-            } else if (retrievedJobApplication.Primary_Contact__c == contactBearId) {
-                retrievedJobApplicationsAfterUpdate_Bear.add(retrievedJobApplication);
-            }
-        }
-
-        System.assertEquals(1, retrievedJobApplicationsAfterUpdate_Thornie.size(), 'Expect 1 job application with Thornie as primary contact');
-        System.assertEquals(1, retrievedJobApplicationsAfterUpdate_Hudson.size(), 'Expect 1 job application with Hudson as primary contact');
-        System.assertEquals(1, retrievedJobApplicationsAfterUpdate_Booz.size(), 'Expect 1 job application with Booz as primary contact');
-        System.assertEquals(1, retrievedJobApplicationsAfterUpdate_Bear.size(), 'Expect 1 job application with Bear as primary contact');
+        System.assertEquals(1, retrievedJobApplications_Thornie.size(), 'Expect 1 job application with Thornie as primary contact');
+        System.assertEquals(1, retrievedJobApplications_Hudson.size(), 'Expect 1 job application with Hudson as primary contact');
+        System.assertEquals(1, retrievedJobApplications_Booz.size(), 'Expect 1 job application with Booz as primary contact');
+        System.assertEquals(1, retrievedJobApplications_Bear.size(), 'Expect 1 job application with Bear as primary contact');
     }
 
     private static Map<String, Id> getAccIdMap() {
+        final List<String> NAMES = new List<String>{
+            'Blackthorn', 
+            'Hudson Technology Systems', 
+            'Booz Allen Hamilton', 
+            'Salesforce'
+        };
+
         List<Account> retrievedAccts = [
             SELECT 
                 Id, 
                 Name 
             FROM Account 
-            WHERE Name IN (
-                    'Blackthorn', 
-                    'Hudson Technology Systems', 
-                    'Booz Allen Hamilton', 
-                    'Salesforce'
-                )
+            WHERE Name IN :NAMES 
+            WITH USER_MODE
         ];
 
         Map<String, Id> accIdMap = new Map<String, Id>();
@@ -222,17 +167,20 @@ private with sharing class JobApplicationContactTest {
     }
 
     private static Map<String, Id> getContactIdMap() {
+        final List<String> LAST_NAMES = new List<String>{
+            'Thornie', 
+            'Hudson', 
+            'Booz', 
+            'Bear'
+        };
+
         List<Contact> retrievedContacts = [
             SELECT 
                 Id, 
                 LastName 
             FROM Contact 
-            WHERE LastName IN (
-                    'Thornie', 
-                    'Hudson', 
-                    'Booz', 
-                    'Bear'
-                )
+            WHERE LastName IN :LAST_NAMES 
+            WITH USER_MODE
         ];
 
         Map<String, Id> contactIdMap = new Map<String, Id>();
@@ -250,5 +198,140 @@ private with sharing class JobApplicationContactTest {
         }
 
         return contactIdMap;
+    }
+
+    private static Map<String, Id> getJobApplicationIdMap() {
+        List<Job_Application__c> retrievedJobApplications = [
+            SELECT 
+                Id, 
+                Position_Title__c 
+            FROM Job_Application__c 
+            WHERE Position_Title__c IN :POSITION_TITLES 
+            WITH USER_MODE
+        ];
+
+        Map<String, Id> jobApplicationIdMap = new Map<String, Id>();
+
+        for (Job_Application__c retrievedJobApplication : retrievedJobApplications) {
+            if (retrievedJobApplication.Position_Title__c == 'jobApplicationBlackthorn') {
+                jobApplicationIdMap.put('jobApplicationBlackthorn', retrievedJobApplication.Id);
+            } else if (retrievedJobApplication.Position_Title__c == 'jobApplicationHTS') {
+                jobApplicationIdMap.put('jobApplicationHTS', retrievedJobApplication.Id);
+            } else if (retrievedJobApplication.Position_Title__c == 'jobApplicationBAH') {
+                jobApplicationIdMap.put('jobApplicationBAH', retrievedJobApplication.Id);
+            } else if (retrievedJobApplication.Position_Title__c == 'jobApplicationSalesforce') {
+                jobApplicationIdMap.put('jobApplicationSalesforce', retrievedJobApplication.Id);
+            }
+        }
+
+        return jobApplicationIdMap;
+    }
+
+    @IsTest
+    private static void update_job_application_primary_contact_on_update() {
+        // GIVEN
+        Map<String, Id> contactIdMap = getContactIdMap();
+
+        Id contactThornieId = contactIdMap.get('Thornie');
+        Id contactHudsonId = contactIdMap.get('Hudson');
+        Id contactBoozId = contactIdMap.get('Booz');
+        Id contactBearId = contactIdMap.get('Bear');
+
+        Map<String, Id> jobApplicationIdMap = getJobApplicationIdMap();
+
+        Id jobApplicationBlackthornId = jobApplicationIdMap.get('jobApplicationBlackthorn');
+        Id jobApplicationHTSId = jobApplicationIdMap.get('jobApplicationHTS');
+        Id jobApplicationBAHId = jobApplicationIdMap.get('jobApplicationBAH');
+        Id jobApplicationSalesforceId = jobApplicationIdMap.get('jobApplicationSalesforce');
+
+        List<Job_Application_Contact__c> jobApplicationContacts = testDataFactory.createJobApplicationContacts_setPrimaryContact_JobApplicationContactTest(
+            contactBoozId, 
+            contactBearId, 
+            jobApplicationBlackthornId, 
+            jobApplicationHTSId, 
+            jobApplicationBAHId, 
+            jobApplicationSalesforceId
+        );
+
+        if (Schema.sObjectType.Job_Application_Contact__c.isCreateable()) {
+            insert as user jobApplicationContacts;
+        }
+
+
+        for (Job_Application_Contact__c jobApplicationContact : jobApplicationContacts) {
+            jobApplicationContact.Contact__c = null;
+        }
+
+        if (Schema.sObjectType.Job_Application__c.isUpdateable()) {
+            update as user jobApplicationContacts;
+        }
+
+        List<Job_Application__c> jobApplicationsToUpdate = [
+            SELECT Primary_Contact__c 
+            FROM Job_Application__c 
+            WHERE Position_Title__c IN :POSITION_TITLES 
+            WITH USER_MODE
+        ];
+
+        for (Job_Application__c jobApplicationToUpdate : jobApplicationsToUpdate) {
+            jobApplicationToUpdate.Primary_Contact__c = null;
+        }
+
+        if (Schema.sObjectType.Job_Application__c.isUpdateable()) {
+            update as user jobApplicationsToUpdate;
+        }
+
+        for (Job_Application_Contact__c jobApplicationContact : jobApplicationContacts) {
+            if (jobApplicationContact.Job_Application__c == jobApplicationBlackthornId) {
+                jobApplicationContact.Contact__c = contactThornieId;
+            } else if (jobApplicationContact.Job_Application__c == jobApplicationHTSId) {
+                jobApplicationContact.Contact__c = contactHudsonId;
+            } else if (jobApplicationContact.Job_Application__c == jobApplicationBAHId) {
+                jobApplicationContact.Contact__c = contactBoozId;
+            } else if (jobApplicationContact.Job_Application__c == jobApplicationSalesforceId) {
+                jobApplicationContact.Contact__c = contactBearId;
+            } else {
+                jobApplicationContact.Contact__c = null;
+            }
+        }
+
+        // WHEN
+        Test.startTest();
+
+        if (Schema.sObjectType.Job_Application__c.isUpdateable()) {
+            update as user jobApplicationContacts;
+        }
+
+        Test.stopTest();
+
+        // THEN
+        List<Job_Application__c> retrievedJobApplications = [
+            SELECT Primary_Contact__c 
+            FROM Job_Application__c 
+            WHERE Position_Title__c IN :POSITION_TITLES 
+            WITH USER_MODE
+        ];
+
+        List<Job_Application__c> retrievedJobApplications_Thornie = new List<Job_Application__c>();
+        List<Job_Application__c> retrievedJobApplications_Hudson = new List<Job_Application__c>();
+        List<Job_Application__c> retrievedJobApplications_Booz = new List<Job_Application__c>();
+        List<Job_Application__c> retrievedJobApplications_Bear = new List<Job_Application__c>();
+
+        for (Job_Application__c retrievedJobApplication : retrievedJobApplications) {
+            if (retrievedJobApplication.Primary_Contact__c == contactThornieId) {
+                retrievedJobApplications_Thornie.add(retrievedJobApplication);
+            } else if (retrievedJobApplication.Primary_Contact__c == contactHudsonId) {
+                retrievedJobApplications_Hudson.add(retrievedJobApplication);
+            } else if (retrievedJobApplication.Primary_Contact__c == contactBoozId) {
+                retrievedJobApplications_Booz.add(retrievedJobApplication);
+            } else if (retrievedJobApplication.Primary_Contact__c == contactBearId) {
+                retrievedJobApplications_Bear.add(retrievedJobApplication);
+            }
+        }
+
+        System.assertEquals(1, retrievedJobApplications_Thornie.size(), 'Expect 1 job application with Thornie as primary contact');
+        System.assertEquals(1, retrievedJobApplications_Hudson.size(), 'Expect 1 job application with Hudson as primary contact');
+        System.assertEquals(1, retrievedJobApplications_Booz.size(), 'Expect 1 job application with Booz as primary contact');
+        System.assertEquals(1, retrievedJobApplications_Bear.size(), 'Expect 1 job application with Bear as primary contact');
     }
 }
